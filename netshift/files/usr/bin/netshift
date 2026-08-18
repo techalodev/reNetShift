@@ -350,6 +350,7 @@ mark_subscription_outbound_unavailable() {
         # never write the rejected-hash for this case, and proactively clear any
         # stale per-URL rejected hash so a feed poisoned by an earlier
         # empty-filter run self-heals on this pass.
+        rm -f "$(get_subscription_rejected_cache_path "$section")"
         get_subscription_urls_for_section "$section" | while IFS= read -r url; do
             [ -n "$url" ] || continue
             urlhash="$(get_subscription_url_hash "$url")"
@@ -366,6 +367,15 @@ mark_subscription_outbound_unavailable() {
     # cached feed's hash PER-URL so the retry worker does not persist, restart
     # and reject exactly the same unusable feed in a flash-writing loop; keeping
     # this per-URL means one bad feed cannot poison another feed's retry state.
+    subscription_json_path="$(get_subscription_json_path "$section")"
+    rejected_cache_path="$(get_subscription_rejected_cache_path "$section")"
+    if [ -s "$subscription_json_path" ]; then
+        rejected_hash="$(md5sum "$subscription_json_path" 2>/dev/null | awk '{print $1}')"
+        if [ -n "$rejected_hash" ] && [ "$(cat "$rejected_cache_path" 2>/dev/null)" != "$rejected_hash" ]; then
+            printf '%s' "$rejected_hash" > "${rejected_cache_path}.tmp.$$" && mv "${rejected_cache_path}.tmp.$$" "$rejected_cache_path"
+            chmod 600 "$rejected_cache_path" 2>/dev/null
+        fi
+    fi
     get_subscription_urls_for_section "$section" | while IFS= read -r url; do
         [ -n "$url" ] || continue
         urlhash="$(get_subscription_url_hash "$url")"

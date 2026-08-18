@@ -27,7 +27,7 @@ TMP_SUBSCRIPTION_MERGE_FOLDER="$TMP_SING_BOX_FOLDER/subscription-merge"
 # keeps the first one that yields valid sing-box outbounds. The default
 # "singbox/<version>" candidate is prepended at runtime (it depends on the
 # installed sing-box). Order matters: most-likely-to-work first.
-SUBSCRIPTION_USER_AGENT_CANDIDATES="Happ/1.0.0 v2rayN/7.0.0 v2rayNG/1.9.0 Clash.Meta Mihomo Hiddify"
+SUBSCRIPTION_USER_AGENT_CANDIDATES="v2rayN v2rayNG Clash.Meta Mihomo Hiddify Happ"
 # Versioned client UAs that well-known panels answer with an Xray JSON body
 # (which carries xhttp/transport nodes the default sing-box JSON may omit). Used
 # by build_subscription_user_agent_candidates when a section's

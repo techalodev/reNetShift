@@ -1069,7 +1069,8 @@ nolog()   { :; }
 # Extended ON so vmess/xhttp gates pass where used.
 is_sing_box_extended() { return 0; }
 
-# awk-extract the SHIPPED handler + the unavailable marker verbatim.
+# awk-extract the SHIPPED helper + handler + the unavailable marker verbatim.
+eval "$(awk '/^_build_proxy_member_outbounds\(\) \{/{p=1} p{print} p&&/^\}/{exit}' "BIN_PATH")"
 eval "$(awk '/^configure_outbound_handler\(\) \{/{p=1} p{print} p&&/^\}/{exit}' "BIN_PATH")"
 eval "$(awk '/^mark_section_outbound_unavailable\(\) \{/{p=1} p{print} p&&/^\}/{exit}' "BIN_PATH")"
 

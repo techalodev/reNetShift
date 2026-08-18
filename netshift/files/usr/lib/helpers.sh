@@ -812,18 +812,12 @@ build_subscription_user_agent_candidates() {
     # Order the auto-mode candidate stream by the requested format preference.
     # "xray" front-loads the Xray-JSON-yielding UAs (so they outrank the cached
     # winner and the default); "singbox"/"auto"/empty/unknown keep today's order
-    # (default UA -> cached winner -> whitelist). Any unknown value falls through
-    # to the default ordering (forward-compatible).
-    if [ "$format_preference" = "singbox" ]; then
-        # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
-        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
-    elif [ "$format_preference" = "xray" ]; then
+    if [ "$format_preference" = "xray" ]; then
         # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
         set -- $SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES "$preferred_user_agent" "$default_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
     else
-        # Auto mode: like Forkop, prioritize Happ / v2rayN / Clash.Meta over singbox to ensure full protocol discovery (Hysteria2, VMess, Trojan, VLESS)
-        # shellcheck disable=SC2086 # word-splitting of the candidate list is intentional
-        set -- "Happ" "v2rayN/7.0.0" "v2rayNG/1.9.0" "Clash.Meta" "Mihomo" "$preferred_user_agent" "$default_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
+        # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
+        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
     fi
 
     for candidate in "$@"; do
@@ -866,33 +860,6 @@ _wget_subscription_request() {
     local req_errfile="$7"
     local req_url="$8"
     shift 8
-
-    if command -v curl >/dev/null 2>&1; then
-        local curl_insecure=""
-        [ -n "$cert_flag" ] && curl_insecure="-k"
-        local curl_timeout="15"
-        local curl_ipv4=""
-        for arg in "$@"; do
-            case "$arg" in
-                -T*) curl_timeout="${arg#-T}" ;;
-                -4) curl_ipv4="-4" ;;
-            esac
-        done
-        curl -s -S $curl_insecure $curl_ipv4 \
-            -L --max-redirs 5 \
-            --connect-timeout 10 -m "$curl_timeout" \
-            -D "$req_errfile" \
-            -o "$req_outfile" \
-            -H "User-Agent: $req_user_agent" \
-            -H "X-HWID: $req_hwid" \
-            -H "X-Device-OS: OpenWrt Linux" \
-            -H "X-Device-Model: $req_device_model" \
-            -H "X-Ver-OS: $req_kernel_version" \
-            -H "Accept-Language: ru-RU,en,*" \
-            -H "X-Device-Locale: EN" \
-            "$req_url" 2>/dev/null
-        return $?
-    fi
 
     # shellcheck disable=SC2086
     wget $cert_flag "$@" -O "$req_outfile" \
@@ -1336,7 +1303,8 @@ xray_json_to_uri_lines() {
           # the facade has no Hysteria v1 parser, so skip v1/missing-version
           # silently (no fatal). vless/trojan/shadowsocks are unaffected.
           | select((.protocol != "hysteria" and .protocol != "hysteria2")
-                   or ((.streamSettings.hysteriaSettings.version // .streamSettings.hysteria2Settings.version // .settings.version // 2) == 2))
+                   or (.protocol == "hysteria2")
+                   or ((.streamSettings.hysteriaSettings.version // .streamSettings.hysteria2Settings.version // .settings.version // 1) == 2))
           | . as $ob
           | (.streamSettings // {}) as $ss
           # splithttp is the pre-rename name of the xhttp transport (sing-box
