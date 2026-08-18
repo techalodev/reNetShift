@@ -27,8 +27,8 @@ TMP_SUBSCRIPTION_MERGE_FOLDER="$TMP_SING_BOX_FOLDER/subscription-merge"
 # keeps the first one that yields valid sing-box outbounds. The default
 # "singbox/<version>" candidate is prepended at runtime (it depends on the
 # installed sing-box). Order matters: most-likely-to-work first.
-SUBSCRIPTION_USER_AGENT_CANDIDATES="Happ/1.0.0 Happ v2rayN/7.0.0 v2rayN v2rayNG Clash.Meta Mihomo Hiddify singbox"
-SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES="Happ/4.1.0 Happ/1.0.0 v2rayN/7.0.0 v2rayNG/1.9.0"
+SUBSCRIPTION_USER_AGENT_CANDIDATES="Happ/3.26.3 Happ/1.0.0 Happ v2rayN/7.0.0 v2rayN v2rayNG Clash.Meta Mihomo Hiddify"
+SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES="Happ/3.26.3 Happ/1.0.0 v2rayN/7.0.0 v2rayNG/1.9.0"
 CLOUDFLARE_OCTETS="8.47 162.159 188.114" # Endpoints https://github.com/ampetelin/warp-endpoint-checker
 JQ_REQUIRED_VERSION="1.7.1"
 COREUTILS_BASE64_REQUIRED_VERSION="9.7"

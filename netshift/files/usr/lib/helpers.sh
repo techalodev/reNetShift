@@ -769,7 +769,7 @@ get_subscription_user_agent() {
         return 0
     fi
 
-    printf 'Happ/4.1.0'
+    printf 'singbox/%s' "$(get_sing_box_version)"
 }
 
 # Emits the ordered, de-duplicated list of User-Agent candidates (one per line)
@@ -799,17 +799,14 @@ build_subscription_user_agent_candidates() {
     seen=""
 
     # Order the auto-mode candidate stream by the requested format preference.
-    # By default, Happ/4.1.0 is probed first for Remnawave/Xray/Hysteria2 compatibility,
-    # followed by cached winner, fallbacks (Happ/1.0.0, v2rayN, Clash.Meta), and sing-box.
+    # "xray" front-loads the Xray-JSON-yielding UAs (Happ/3.26.3, Happ/1.0.0, v2rayN);
+    # "singbox"/"auto"/empty/unknown keep today's order:
     if [ "$format_preference" = "xray" ]; then
         # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
         set -- $SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES "$preferred_user_agent" "$default_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
-    elif [ "$format_preference" = "singbox" ]; then
-        # shellcheck disable=SC2086
-        set -- "singbox/$(get_sing_box_version)" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
     else
         # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
-        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES "singbox/$(get_sing_box_version)"
+        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
     fi
 
     for candidate in "$@"; do
@@ -853,55 +850,40 @@ _wget_subscription_request() {
     local req_url="$8"
     shift 8
 
-    if command -v curl >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    wget $cert_flag "$@" -O "$req_outfile" \
+        --header "User-Agent: $req_user_agent" \
+        --header "X-HWID: $req_hwid" \
+        --header "X-Device-OS: iOS" \
+        --header "X-Device-Model: iPhone15,2" \
+        --header "X-Ver-OS: 17.5.1" \
+        --header "Accept-Language: ru-RU,en,*" \
+        --header "X-Device-Locale: RU" \
+        "$req_url" 2>"$req_errfile"
+    local rc=$?
+
+    # If download succeeded, attempt to capture response headers for subscription metadata via curl
+    if [ "$rc" -eq 0 ] && command -v curl >/dev/null 2>&1; then
         local curl_insecure=""
         [ "$cert_flag" = "--no-check-certificate" ] && curl_insecure="-k"
-        local curl_v4=""
-        case " $* " in
-            *" -4 "*) curl_v4="-4" ;;
-            *" -6 "*) curl_v4="-6" ;;
-        esac
-        local curl_timeout="15"
-        local prev=""
-        for arg in "$@"; do
-            if [ "$prev" = "-T" ] || [ "$prev" = "--timeout" ]; then
-                curl_timeout="$arg"
-            fi
-            prev="$arg"
-        done
-
         local curl_proxy=""
         if [ -n "$http_proxy" ]; then
             curl_proxy="--proxy $http_proxy"
         elif [ -n "$https_proxy" ]; then
             curl_proxy="--proxy $https_proxy"
         fi
-
-        # shellcheck disable=SC2086
-        curl -s -S -L $curl_insecure $curl_v4 $curl_proxy --max-time "$curl_timeout" \
-            -D "$req_errfile" \
-            -o "$req_outfile" \
+        curl -s -I -L $curl_insecure $curl_proxy --max-time 5 \
             -H "User-Agent: $req_user_agent" \
             -H "X-HWID: $req_hwid" \
-            -H "X-Device-OS: OpenWrt Linux" \
-            -H "X-Device-Model: $req_device_model" \
-            -H "X-Ver-OS: $req_kernel_version" \
+            -H "X-Device-OS: iOS" \
+            -H "X-Device-Model: iPhone15,2" \
+            -H "X-Ver-OS: 17.5.1" \
             -H "Accept-Language: ru-RU,en,*" \
-            -H "X-Device-Locale: EN" \
-            "$req_url" 2>>"$req_errfile"
-        return $?
+            -H "X-Device-Locale: RU" \
+            "$req_url" > "$req_errfile" 2>/dev/null || true
     fi
 
-    # shellcheck disable=SC2086
-    wget $cert_flag "$@" -O "$req_outfile" \
-        --header "User-Agent: $req_user_agent" \
-        --header "X-HWID: $req_hwid" \
-        --header "X-Device-OS: OpenWrt Linux" \
-        --header "X-Device-Model: $req_device_model" \
-        --header "X-Ver-OS: $req_kernel_version" \
-        --header "Accept-Language: ru-RU,en,*" \
-        --header "X-Device-Locale: EN" \
-        "$req_url" 2>"$req_errfile"
+    return $rc
 }
 
 # Extracts subscription metadata (Subscription-Userinfo, Profile-Title, etc.) from wget stderr file

@@ -587,7 +587,7 @@ download_subscription_into_cache() {
     # Empty/unset -> auto (today's order); unknown values are treated as auto by
     # the builder. The probe loop still keeps the first body with valid outbounds.
     subscription_format_preference="$(uci -q get "netshift.${section}.subscription_format_preference" 2>/dev/null)"
-    [ -n "$subscription_format_preference" ] || subscription_format_preference="auto"
+    [ -n "$subscription_format_preference" ] || subscription_format_preference="xray"
     candidates_file="${tmpfile}.ua"
     if ! build_subscription_user_agent_candidates "$configured_user_agent" "$cached_user_agent" "$subscription_format_preference" > "$candidates_file"; then
         log "Failed to build subscription User-Agent candidate list for section '$section'" "error"
