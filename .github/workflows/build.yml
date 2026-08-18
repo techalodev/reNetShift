@@ -15,8 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5.0.0
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.11.1
+      - name: Make scripts executable
+        run: chmod +x tests/entrypoint.sh install.sh netshift/files/usr/bin/* netshift/files/etc/init.d/* 2>/dev/null || true
 
       - name: Build OpenWrt smoke test image
         run: docker compose -f tests/docker-compose.yml build netshift-test
