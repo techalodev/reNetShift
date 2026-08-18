@@ -37,7 +37,8 @@
           # the facade has no Hysteria v1 parser, so skip v1/missing-version
           # silently (no fatal). vless/trojan/shadowsocks are unaffected.
           | select((.protocol != "hysteria" and .protocol != "hysteria2")
-                   or ((.streamSettings.hysteriaSettings.version // .streamSettings.hysteria2Settings.version // 2) == 2))
+                   or (.protocol == "hysteria2")
+                   or ((.streamSettings.hysteriaSettings.version // .streamSettings.hysteria2Settings.version // .settings.version // 1) == 2))
           | . as $ob
           | (.streamSettings // {}) as $ss
           # splithttp is the pre-rename name of the xhttp transport (sing-box
@@ -55,7 +56,7 @@
           # hysteria carries the peer directly in settings.address/settings.port
           # (no vnext/servers), so branch the peer derivation on protocol.
           | (if ($ob.protocol == "hysteria" or $ob.protocol == "hysteria2")
-             then {address: ($ob.settings.address // $ob.settings.servers[0].address // $ob.settings.vnext[0].address // ""), port: ($ob.settings.port // $ob.settings.servers[0].port // $ob.settings.vnext[0].port // 443)}
+             then {address: ($ob.settings.address // $ob.settings.server // $ob.settings.servers[0].address // $ob.settings.servers[0].server // $ob.settings.vnext[0].address // $ob.settings.vnext[0].server // ""), port: ($ob.settings.port // $ob.settings.servers[0].port // $ob.settings.vnext[0].port // 443)}
              else ($ob.settings.vnext[0] // $ob.settings.servers[0] // {}) end) as $peer
           | ($peer.users[0] // {}) as $user
           | ($peer.address // "") as $host
@@ -123,7 +124,7 @@
           # password for trojan/shadowsocks.
           | (if $ob.protocol == "vless" then ($user.id // "")
              elif ($ob.protocol == "hysteria" or $ob.protocol == "hysteria2") then
-               ($ss.hysteriaSettings.auth // $ss.hysteria2Settings.auth // $ob.settings.auth // $ob.settings.password // $ob.settings.servers[0].password // $ob.settings.vnext[0].users[0].password // "")
+               ($ss.hysteriaSettings.auth // $ss.hysteria2Settings.auth // $ob.settings.auth // $ob.settings.password // $ob.settings.servers[0].password // $ob.settings.servers[0].users[0].password // $ob.settings.vnext[0].users[0].password // $ob.settings.servers[0].auth // "")
              else ($peer.password // $ob.settings.password // "") end) as $cred
           | select($cred != "")
           | ($ob.protocol

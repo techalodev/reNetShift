@@ -154,7 +154,7 @@ sing_box_cf_add_proxy_outbound() {
         config=$(_add_outbound_security "$config" "$tag" "$url")
         config=$(_add_outbound_transport "$config" "$tag" "$url")
         ;;
-    hysteria2 | hy2)
+    hysteria2 | hy2 | hysteria)
         local tag host port password obfuscator_type obfuscator_password upload_mbps download_mbps
         tag=$(get_outbound_tag_by_section "$section")
         host=$(url_get_host "$url")
@@ -246,7 +246,7 @@ _add_outbound_security() {
     scheme="$(url_get_scheme "$url")"
 
     if [ -z "$security" ]; then
-        if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ]; then
+        if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ] || [ "$scheme" = "hysteria" ]; then
             security="tls"
         fi
     fi
@@ -255,7 +255,7 @@ _add_outbound_security() {
     tls | reality)
         local sni insecure alpn fingerprint public_key short_id transport_type
         sni=$(url_get_query_param "$url" "sni")
-        if [ -z "$sni" ] && { [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ] || [ "$scheme" = "trojan" ]; }; then
+        if [ -z "$sni" ] && { [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ] || [ "$scheme" = "hysteria" ] || [ "$scheme" = "trojan" ]; }; then
             sni="$(url_get_host "$url")"
         fi
         insecure=$(_get_insecure_query_param_from_url "$url")
@@ -271,7 +271,7 @@ _add_outbound_security() {
             alpn='["h2","http/1.1"]'
         fi
 
-        if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ]; then
+        if [ "$scheme" = "hysteria2" ] || [ "$scheme" = "hy2" ] || [ "$scheme" = "hysteria" ]; then
                 fingerprint=""
         fi
 
@@ -604,9 +604,10 @@ sing_box_cf_prepare_subscription_batch() {
                 empty
               elif (($ob.transport.type // "") == "xhttp" and ($extended | not)) then
                 empty
-              elif ($ob.type == "hysteria2") then
+              elif ($ob.type == "hysteria2" or $ob.type == "hysteria") then
                 # Sing-box rejects uTLS and transport for Hysteria2 (QUIC), and requires tls.enabled: true
                 ($ob
+                 | .type = "hysteria2"
                  | del(.tls.utls)
                  | del(.utls)
                  | del(.transport)

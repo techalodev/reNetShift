@@ -861,6 +861,45 @@ _wget_subscription_request() {
     local req_url="$8"
     shift 8
 
+    if command -v curl >/dev/null 2>&1; then
+        local curl_insecure=""
+        [ "$cert_flag" = "--no-check-certificate" ] && curl_insecure="-k"
+        local curl_v4=""
+        case " $* " in
+            *" -4 "*) curl_v4="-4" ;;
+            *" -6 "*) curl_v4="-6" ;;
+        esac
+        local curl_timeout="15"
+        local prev=""
+        for arg in "$@"; do
+            if [ "$prev" = "-T" ] || [ "$prev" = "--timeout" ]; then
+                curl_timeout="$arg"
+            fi
+            prev="$arg"
+        done
+
+        local curl_proxy=""
+        if [ -n "$http_proxy" ]; then
+            curl_proxy="--proxy $http_proxy"
+        elif [ -n "$https_proxy" ]; then
+            curl_proxy="--proxy $https_proxy"
+        fi
+
+        # shellcheck disable=SC2086
+        curl -s -S -L $curl_insecure $curl_v4 $curl_proxy --max-time "$curl_timeout" \
+            -D "$req_errfile" \
+            -o "$req_outfile" \
+            -H "User-Agent: $req_user_agent" \
+            -H "X-HWID: $req_hwid" \
+            -H "X-Device-OS: OpenWrt Linux" \
+            -H "X-Device-Model: $req_device_model" \
+            -H "X-Ver-OS: $req_kernel_version" \
+            -H "Accept-Language: ru-RU,en,*" \
+            -H "X-Device-Locale: EN" \
+            "$req_url" 2>>"$req_errfile"
+        return $?
+    fi
+
     # shellcheck disable=SC2086
     wget $cert_flag "$@" -O "$req_outfile" \
         --header "User-Agent: $req_user_agent" \
@@ -928,6 +967,21 @@ extract_subscription_metadata_from_errfile() {
                 title;
         }
     }' "$errfile" > "$outfile" 2>/dev/null
+
+    if [ -s "$outfile" ]; then
+        local raw_title
+        raw_title="$(jq -r '.title // ""' "$outfile" 2>/dev/null)"
+        if [ "${raw_title#base64:}" != "$raw_title" ]; then
+            local b64_part="${raw_title#base64:}"
+            local dec_title
+            dec_title="$(base64_decode "$b64_part" 2>/dev/null)"
+            if [ -n "$dec_title" ]; then
+                local updated
+                updated="$(jq -c --arg title "$dec_title" '.title = $title' "$outfile" 2>/dev/null)"
+                [ -n "$updated" ] && printf '%s\n' "$updated" > "$outfile"
+            fi
+        fi
+    fi
 
     [ -s "$outfile" ]
 }
@@ -1577,7 +1631,7 @@ normalize_subscription_to_singbox() {
         # reaches the builder's fatal path.
         scheme="$(url_get_scheme "$line")"
         case "$scheme" in
-        vless | trojan | ss | hysteria2 | hy2 | socks5 | socks4 | socks4a) ;;
+        vless | trojan | ss | hysteria2 | hy2 | hysteria | socks5 | socks4 | socks4a) ;;
         *)
             skipped=$(( skipped + 1 ))
             continue
