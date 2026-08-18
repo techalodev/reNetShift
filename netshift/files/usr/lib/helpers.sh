@@ -867,8 +867,35 @@ _wget_subscription_request() {
     local req_url="$8"
     shift 8
 
+    if command -v curl >/dev/null 2>&1; then
+        local curl_insecure=""
+        [ -n "$cert_flag" ] && curl_insecure="-k"
+        local curl_timeout="15"
+        local curl_ipv4=""
+        for arg in "$@"; do
+            case "$arg" in
+                -T*) curl_timeout="${arg#-T}" ;;
+                -4) curl_ipv4="-4" ;;
+            esac
+        done
+        curl -s -S $curl_insecure $curl_ipv4 \
+            -L --max-redirs 5 \
+            --connect-timeout 10 -m "$curl_timeout" \
+            -D "$req_errfile" \
+            -o "$req_outfile" \
+            -H "User-Agent: $req_user_agent" \
+            -H "X-HWID: $req_hwid" \
+            -H "X-Device-OS: OpenWrt Linux" \
+            -H "X-Device-Model: $req_device_model" \
+            -H "X-Ver-OS: $req_kernel_version" \
+            -H "Accept-Language: ru-RU,en,*" \
+            -H "X-Device-Locale: EN" \
+            "$req_url" 2>/dev/null
+        return $?
+    fi
+
     # shellcheck disable=SC2086
-    wget -S $cert_flag "$@" -O "$req_outfile" \
+    wget $cert_flag "$@" -O "$req_outfile" \
         --header "User-Agent: $req_user_agent" \
         --header "X-HWID: $req_hwid" \
         --header "X-Device-OS: OpenWrt Linux" \
