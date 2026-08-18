@@ -49,7 +49,7 @@ export const CONNECTIONS_STYLES = `
     gap: 8px;
     align-items: center;
     flex: 1;
-    min-width: 250px;
+    min-width: 280px;
   }
 
   .pdk_connections-search-input {
@@ -90,28 +90,31 @@ export const CONNECTIONS_STYLES = `
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     border-radius: 8px;
     overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .pdk_connections-table {
     width: 100%;
+    min-width: 780px;
     border-collapse: collapse;
     font-size: 12px;
     text-align: left;
   }
 
   .pdk_connections-table th {
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-muted, #999);
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
+    letter-spacing: 0.4px;
     border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     white-space: nowrap;
   }
 
   .pdk_connections-table td {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.04));
     vertical-align: middle;
   }
@@ -120,45 +123,67 @@ export const CONNECTIONS_STYLES = `
     background: rgba(255, 255, 255, 0.03);
   }
 
+  .pdk_connections-host-cell {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
   .pdk_badge {
-    display: inline-block;
-    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
+    line-height: 1.4;
     text-transform: uppercase;
   }
 
   .pdk_badge-tcp {
-    background: rgba(52, 152, 219, 0.2);
-    color: #3498db;
-    border: 1px solid rgba(52, 152, 219, 0.4);
+    background: rgba(52, 152, 219, 0.18);
+    color: #5dade2;
+    border: 1px solid rgba(52, 152, 219, 0.35);
   }
 
   .pdk_badge-udp {
-    background: rgba(155, 89, 182, 0.2);
-    color: #9b59b6;
-    border: 1px solid rgba(155, 89, 182, 0.4);
+    background: rgba(155, 89, 182, 0.18);
+    color: #bb8fce;
+    border: 1px solid rgba(155, 89, 182, 0.35);
   }
 
   .pdk_badge-rule {
-    background: rgba(46, 204, 113, 0.15);
+    background: rgba(46, 204, 113, 0.14);
     color: #2ecc71;
-    border: 1px solid rgba(46, 204, 113, 0.3);
+    border: 1px solid rgba(46, 204, 113, 0.28);
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: none;
+    font-size: 11px;
   }
 
   .pdk_connections-close-btn {
-    padding: 3px 8px;
-    font-size: 11px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: bold;
     border-radius: 4px;
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
     border: 1px solid rgba(231, 76, 60, 0.3);
     cursor: pointer;
     transition: all 0.2s;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .pdk_connections-close-btn:hover {
+  .pdk_connections-close-btn:hover:not(:disabled) {
     background: #e74c3c;
     color: #fff;
   }

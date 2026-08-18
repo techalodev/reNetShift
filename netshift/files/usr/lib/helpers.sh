@@ -769,7 +769,7 @@ get_subscription_user_agent() {
         return 0
     fi
 
-    printf 'singbox/%s' "$(get_sing_box_version)"
+    printf 'Happ/4.1.0'
 }
 
 # Emits the ordered, de-duplicated list of User-Agent candidates (one per line)
@@ -784,17 +784,6 @@ get_subscription_user_agent() {
 #   $3 - format preference: "auto" (default) | "xray" | "singbox". Reorders the
 #        auto-mode candidates so the preferred FORMAT's UA is probed first; the
 #        probe loop still keeps the first body that yields valid outbounds.
-# Behavior:
-#   - configured non-empty: emit ONLY that value (respect the user's choice;
-#     an explicit UA always outranks the format preference).
-#   - auto/empty/unrecognised: emit "singbox/<ver>", then the preferred one,
-#     then the whitelist (SUBSCRIPTION_USER_AGENT_CANDIDATES) — today's order.
-#   - xray: emit the Xray-JSON UAs (SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES)
-#     FIRST (outranking the cached winner + default), then "singbox/<ver>",
-#     then the preferred one, then the rest of the whitelist.
-#   - singbox: same as auto (singbox/<ver> first); the explicit name for the
-#     current default ordering.
-#   All orderings are de-duplicated with the newline "seen" set below.
 build_subscription_user_agent_candidates() {
     local configured_user_agent="${1:-}"
     local preferred_user_agent="${2:-}"
@@ -810,14 +799,17 @@ build_subscription_user_agent_candidates() {
     seen=""
 
     # Order the auto-mode candidate stream by the requested format preference.
-    # "xray" front-loads the Xray-JSON-yielding UAs (so they outrank the cached
-    # winner and the default); "singbox"/"auto"/empty/unknown keep today's order
+    # By default, Happ/4.1.0 is probed first for Remnawave/Xray/Hysteria2 compatibility,
+    # followed by cached winner, fallbacks (Happ/1.0.0, v2rayN, Clash.Meta), and sing-box.
     if [ "$format_preference" = "xray" ]; then
         # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
         set -- $SUBSCRIPTION_USER_AGENT_XRAY_CANDIDATES "$preferred_user_agent" "$default_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
+    elif [ "$format_preference" = "singbox" ]; then
+        # shellcheck disable=SC2086
+        set -- "singbox/$(get_sing_box_version)" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
     else
         # shellcheck disable=SC2086 # word-splitting of the candidate lists is intentional
-        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES
+        set -- "$default_user_agent" "$preferred_user_agent" $SUBSCRIPTION_USER_AGENT_CANDIDATES "singbox/$(get_sing_box_version)"
     fi
 
     for candidate in "$@"; do

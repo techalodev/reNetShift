@@ -6224,37 +6224,57 @@ function getClashUIUrl() {
 // src/helpers/getDeviceHostnames.ts
 async function getDeviceHostnames() {
   const ipMap = {};
-  try {
-    const leases = await fs.read("/tmp/dhcp.leases").catch(() => "") || await fs.read("/var/dhcp.leases").catch(() => "");
-    if (leases) {
-      const lines = leases.split("\n");
-      for (const line of lines) {
-        const parts = line.trim().split(/\s+/);
-        if (parts.length >= 4) {
-          const ip = parts[2];
-          const hostname = parts[3];
-          if (ip && hostname && hostname !== "*" && hostname !== "?") {
-            ipMap[ip] = hostname;
-          }
+  const parseLeases = (content) => {
+    if (!content) return;
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 4) {
+        const ip = parts[2];
+        const hostname = parts[3];
+        if (ip && hostname && hostname !== "*" && hostname !== "?") {
+          ipMap[ip] = hostname;
         }
       }
     }
+  };
+  const parseHosts = (content) => {
+    if (!content) return;
+    const lines = content.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const parts = trimmed.split(/\s+/);
+      if (parts.length >= 2) {
+        const ip = parts[0];
+        const hostname = parts[1];
+        if (ip && hostname && !ipMap[ip] && ip !== "127.0.0.1" && ip !== "::1" && ip !== "localhost") {
+          ipMap[ip] = hostname;
+        }
+      }
+    }
+  };
+  try {
+    const l1 = await fs.read("/tmp/dhcp.leases").catch(() => "");
+    parseLeases(l1);
+    const l2 = await fs.read("/var/dhcp.leases").catch(() => "");
+    parseLeases(l2);
   } catch (_2) {
   }
   try {
-    const hosts = await fs.read("/etc/hosts").catch(() => "");
-    if (hosts) {
-      const lines = hosts.split("\n");
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) continue;
-        const parts = trimmed.split(/\s+/);
-        if (parts.length >= 2) {
-          const ip = parts[0];
-          const hostname = parts[1];
-          if (ip && hostname && !ipMap[ip] && ip !== "127.0.0.1" && ip !== "::1") {
-            ipMap[ip] = hostname;
-          }
+    const h1 = await fs.read("/etc/hosts").catch(() => "");
+    parseHosts(h1);
+    const h2 = await fs.read("/tmp/hosts/odhcpd").catch(() => "");
+    parseHosts(h2);
+  } catch (_2) {
+  }
+  try {
+    if (fs.list) {
+      const hostFiles = await fs.list("/tmp/hosts").catch(() => []);
+      for (const file of hostFiles) {
+        if (file && file.name && !file.name.startsWith(".")) {
+          const content = await fs.read("/tmp/hosts/" + file.name).catch(() => "");
+          parseHosts(content);
         }
       }
     }
@@ -6404,7 +6424,7 @@ function renderConnections({
               E("span", { style: "color: var(--text-muted, #888); font-size: 11px;" }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`)
             ]) : E("span", { style: "color: var(--text-muted, #aaa); white-space: nowrap;" }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`);
             return E("tr", {}, [
-              E("td", { style: "max-width: 220px; word-break: break-all; font-weight: 500;" }, hostDisplay),
+              E("td", { class: "pdk_connections-host-cell", title: hostDisplay }, hostDisplay),
               E("td", {}, [clientContent]),
               E("td", {}, [
                 E("span", { class: `pdk_badge ${netBadgeClass}` }, conn.metadata.network?.toUpperCase() || "TCP")
@@ -6601,7 +6621,7 @@ var CONNECTIONS_STYLES = `
     gap: 8px;
     align-items: center;
     flex: 1;
-    min-width: 250px;
+    min-width: 280px;
   }
 
   .pdk_connections-search-input {
@@ -6642,28 +6662,31 @@ var CONNECTIONS_STYLES = `
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     border-radius: 8px;
     overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .pdk_connections-table {
     width: 100%;
+    min-width: 780px;
     border-collapse: collapse;
     font-size: 12px;
     text-align: left;
   }
 
   .pdk_connections-table th {
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-muted, #999);
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
+    letter-spacing: 0.4px;
     border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     white-space: nowrap;
   }
 
   .pdk_connections-table td {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.04));
     vertical-align: middle;
   }
@@ -6672,45 +6695,67 @@ var CONNECTIONS_STYLES = `
     background: rgba(255, 255, 255, 0.03);
   }
 
+  .pdk_connections-host-cell {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
   .pdk_badge {
-    display: inline-block;
-    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
     border-radius: 4px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
+    line-height: 1.4;
     text-transform: uppercase;
   }
 
   .pdk_badge-tcp {
-    background: rgba(52, 152, 219, 0.2);
-    color: #3498db;
-    border: 1px solid rgba(52, 152, 219, 0.4);
+    background: rgba(52, 152, 219, 0.18);
+    color: #5dade2;
+    border: 1px solid rgba(52, 152, 219, 0.35);
   }
 
   .pdk_badge-udp {
-    background: rgba(155, 89, 182, 0.2);
-    color: #9b59b6;
-    border: 1px solid rgba(155, 89, 182, 0.4);
+    background: rgba(155, 89, 182, 0.18);
+    color: #bb8fce;
+    border: 1px solid rgba(155, 89, 182, 0.35);
   }
 
   .pdk_badge-rule {
-    background: rgba(46, 204, 113, 0.15);
+    background: rgba(46, 204, 113, 0.14);
     color: #2ecc71;
-    border: 1px solid rgba(46, 204, 113, 0.3);
+    border: 1px solid rgba(46, 204, 113, 0.28);
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: none;
+    font-size: 11px;
   }
 
   .pdk_connections-close-btn {
-    padding: 3px 8px;
-    font-size: 11px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: bold;
     border-radius: 4px;
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
     border: 1px solid rgba(231, 76, 60, 0.3);
     cursor: pointer;
     transition: all 0.2s;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  .pdk_connections-close-btn:hover {
+  .pdk_connections-close-btn:hover:not(:disabled) {
     background: #e74c3c;
     color: #fff;
   }

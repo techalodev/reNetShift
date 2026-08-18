@@ -147,7 +147,7 @@ export function renderConnections({
                   : E('span', { style: 'color: var(--text-muted, #aaa); white-space: nowrap;' }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`);
 
                 return E('tr', {}, [
-                  E('td', { style: 'max-width: 220px; word-break: break-all; font-weight: 500;' }, hostDisplay),
+                  E('td', { class: 'pdk_connections-host-cell', title: hostDisplay }, hostDisplay),
                   E('td', {}, [clientContent]),
                   E('td', {}, [
                     E('span', { class: `pdk_badge ${netBadgeClass}` }, conn.metadata.network?.toUpperCase() || 'TCP'),
