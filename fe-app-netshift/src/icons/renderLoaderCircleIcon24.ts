@@ -1,11 +1,13 @@
 import { svgEl } from '../helpers';
 
-export function renderLoaderCircleIcon24() {
+export function renderLoaderCircleIcon24(size = 16) {
   const NS = 'http://www.w3.org/2000/svg';
   return svgEl(
     'svg',
     {
       xmlns: NS,
+      width: String(size),
+      height: String(size),
       viewBox: '0 0 24 24',
       fill: 'none',
       stroke: 'currentColor',
@@ -13,6 +15,7 @@ export function renderLoaderCircleIcon24() {
       'stroke-linecap': 'round',
       'stroke-linejoin': 'round',
       class: 'lucide lucide-loader-circle rotate',
+      style: `width: ${size}px; height: ${size}px; min-width: ${size}px; min-height: ${size}px; vertical-align: middle; display: inline-block;`,
     },
     [
       svgEl('path', {

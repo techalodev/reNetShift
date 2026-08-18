@@ -29,7 +29,7 @@ export function renderConnections({
   onCloseConnection,
   onCloseAllConnections,
 }: IRenderConnectionsProps): HTMLElement {
-  const { connections, downloadTotal, uploadTotal, memory, searchQuery, filterNetwork, isPaused, closingIds, closingAll, loading } = state;
+  const { connections, downloadTotal, uploadTotal, memory, hostnames, searchQuery, filterNetwork, isPaused, closingIds, closingAll, loading } = state;
 
   // Filter connections
   const q = searchQuery.toLowerCase().trim();
@@ -42,7 +42,8 @@ export function renderConnections({
     const src = (conn.metadata.sourceIP || '').toLowerCase();
     const rule = (conn.rule || '').toLowerCase();
     const chain = (conn.chains?.join(' ') || '').toLowerCase();
-    return host.includes(q) || src.includes(q) || rule.includes(q) || chain.includes(q);
+    const device = (hostnames[conn.metadata.sourceIP] || '').toLowerCase();
+    return host.includes(q) || src.includes(q) || rule.includes(q) || chain.includes(q) || device.includes(q);
   });
 
   return E('div', { class: 'pdk_connections-page' }, [
@@ -72,7 +73,7 @@ export function renderConnections({
         E('input', {
           type: 'text',
           class: 'pdk_connections-search-input',
-          placeholder: _('Search by host, IP, rule...'),
+          placeholder: _('Search by host, IP, device, rule...'),
           value: searchQuery,
           oninput: (e: Event) => onSearchChange((e.target as HTMLInputElement).value),
         }),
@@ -120,7 +121,7 @@ export function renderConnections({
             E('thead', {}, [
               E('tr', {}, [
                 E('th', {}, _('Host / Destination')),
-                E('th', {}, _('Client IP')),
+                E('th', {}, _('Device / Client IP')),
                 E('th', {}, _('Network')),
                 E('th', {}, _('Route / Outbound')),
                 E('th', {}, _('Upload')),
@@ -137,10 +138,17 @@ export function renderConnections({
                   : `${conn.metadata.destinationIP}:${conn.metadata.destinationPort}`;
                 const netBadgeClass = conn.metadata.network?.toLowerCase() === 'udp' ? 'pdk_badge-udp' : 'pdk_badge-tcp';
                 const chainDisplay = (conn.chains && conn.chains.length > 0) ? conn.chains[conn.chains.length - 1] : (conn.rule || 'DIRECT');
+                const deviceName = hostnames[conn.metadata.sourceIP];
+                const clientContent = deviceName
+                  ? E('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+                      E('span', { style: 'font-weight: 600; color: var(--text-color-high, #fff); font-size: 13px;' }, deviceName),
+                      E('span', { style: 'color: var(--text-muted, #888); font-size: 11px;' }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`),
+                    ])
+                  : E('span', { style: 'color: var(--text-muted, #aaa); white-space: nowrap;' }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`);
 
                 return E('tr', {}, [
                   E('td', { style: 'max-width: 220px; word-break: break-all; font-weight: 500;' }, hostDisplay),
-                  E('td', { style: 'color: var(--text-muted, #aaa); white-space: nowrap;' }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`),
+                  E('td', {}, [clientContent]),
                   E('td', {}, [
                     E('span', { class: `pdk_badge ${netBadgeClass}` }, conn.metadata.network?.toUpperCase() || 'TCP'),
                   ]),

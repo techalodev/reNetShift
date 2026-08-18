@@ -66,6 +66,25 @@ export const styles = `
     gap: 8px;
 }
 
+.pdk_dashboard-page__outbound-section__actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.pdk_dashboard-page__outbound-section__actions .btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    flex-shrink: 0;
+}
+
 .pdk_dashboard-page__outbound-section__action-btn {
     display: inline-flex;
     align-items: center;

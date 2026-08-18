@@ -1214,6 +1214,24 @@ var NetShiftShellMethods = {
 };
 
 // src/netshift/methods/custom/getDashboardSections.ts
+function matchesProxyCode(proxyKey, targetCode) {
+  if (!proxyKey || !targetCode) return false;
+  if (proxyKey === targetCode) return true;
+  try {
+    if (decodeURIComponent(proxyKey) === decodeURIComponent(targetCode)) return true;
+  } catch (_2) {
+  }
+  try {
+    if (decodeURIComponent(proxyKey) === targetCode || proxyKey === decodeURIComponent(targetCode)) return true;
+  } catch (_2) {
+  }
+  return false;
+}
+function findProxy(proxies, targetCode) {
+  return proxies.find(
+    (p) => matchesProxyCode(p.code, targetCode) || p.value?.name && matchesProxyCode(p.value.name, targetCode)
+  );
+}
 async function getDashboardSections() {
   const configSections = await getConfigSections();
   const clashProxies = await NetShiftShellMethods.getClashApiProxies();
@@ -1236,22 +1254,21 @@ async function getDashboardSections() {
   const data = configSections.filter(
     (section) => section.connection_type !== "block" && section.connection_type !== "exclusion" && section[".type"] !== "settings"
   ).map((section) => {
+    const sectionName = section[".name"];
     if (section.connection_type === "proxy") {
       if (section.proxy_config_type === "url") {
-        const outbound = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-out`
-        );
+        const outbound = findProxy(proxies, sectionName + "-out");
         const activeConfigs = splitProxyString(section.proxy_string);
         const proxyDisplayName = getProxyUrlName(activeConfigs?.[0]) || outbound?.value?.name || "";
         return {
           withTagSelect: false,
-          code: outbound?.code || section[".name"],
-          displayName: section[".name"],
-          sectionName: section[".name"],
+          code: outbound?.code || sectionName,
+          displayName: sectionName,
+          sectionName,
           isSubscription: false,
           outbounds: [
             {
-              code: outbound?.code || section[".name"],
+              code: outbound?.code || sectionName,
               displayName: proxyDisplayName,
               latency: outbound?.value?.history?.[0]?.delay || 0,
               type: outbound?.value?.type || "",
@@ -1261,21 +1278,19 @@ async function getDashboardSections() {
         };
       }
       if (section.proxy_config_type === "outbound") {
-        const outbound = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-out`
-        );
+        const outbound = findProxy(proxies, sectionName + "-out");
         const parsedOutbound = JSON.parse(section.outbound_json);
         const parsedTag = parsedOutbound?.tag ? decodeURIComponent(parsedOutbound?.tag) : void 0;
         const proxyDisplayName = parsedTag || outbound?.value?.name || "";
         return {
           withTagSelect: false,
-          code: outbound?.code || section[".name"],
-          displayName: section[".name"],
-          sectionName: section[".name"],
+          code: outbound?.code || sectionName,
+          displayName: sectionName,
+          sectionName,
           isSubscription: false,
           outbounds: [
             {
-              code: outbound?.code || section[".name"],
+              code: outbound?.code || sectionName,
               displayName: proxyDisplayName,
               latency: outbound?.value?.history?.[0]?.delay || 0,
               type: outbound?.value?.type || "",
@@ -1285,50 +1300,42 @@ async function getDashboardSections() {
         };
       }
       if (section.proxy_config_type === "selector") {
-        const selector = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-out`
-        );
+        const selector = findProxy(proxies, sectionName + "-out");
         const links = section.selector_proxy_links ?? [];
         const outbounds = links.map((link, index) => ({
           link,
-          outbound: proxies.find(
-            (item) => item.code === `${section[".name"]}-${index + 1}-out`
-          )
+          outbound: findProxy(proxies, sectionName + "-" + (index + 1) + "-out")
         })).map((item) => ({
           code: item?.outbound?.code || "",
           displayName: getProxyUrlName(item.link) || item?.outbound?.value?.name || "",
           latency: item?.outbound?.value?.history?.[0]?.delay || 0,
           type: item?.outbound?.value?.type || "",
-          selected: selector?.value?.now === item?.outbound?.code
+          selected: matchesProxyCode(selector?.value?.now || "", item?.outbound?.code || "")
         }));
         return {
           withTagSelect: true,
-          code: selector?.code || section[".name"],
-          displayName: section[".name"],
-          sectionName: section[".name"],
+          code: selector?.code || sectionName,
+          displayName: sectionName,
+          sectionName,
           isSubscription: false,
           outbounds
         };
       }
       if (section.proxy_config_type === "urltest") {
-        const selector = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-out`
-        );
-        const outbound = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-urltest-out`
-        );
-        const outbounds = (outbound?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item, index) => ({
+        const selector = findProxy(proxies, sectionName + "-out");
+        const outbound = findProxy(proxies, sectionName + "-urltest-out");
+        const outbounds = (outbound?.value?.all ?? []).map((code) => findProxy(proxies, code)).filter(Boolean).map((item, index) => ({
           code: item?.code || "",
-          displayName: getProxyUrlName(section.urltest_proxy_links?.[index]) || item?.value?.name || "",
+          displayName: getProxyUrlName(section.urltest_proxy_links?.[index]) || item?.value?.name || decodeURIComponent(item?.code || ""),
           latency: item?.value?.history?.[0]?.delay || 0,
           type: item?.value?.type || "",
-          selected: selector?.value?.now === item?.code
+          selected: matchesProxyCode(selector?.value?.now || "", item?.code || "")
         }));
         return {
           withTagSelect: true,
-          code: selector?.code || section[".name"],
-          displayName: section[".name"],
-          sectionName: section[".name"],
+          code: selector?.code || sectionName,
+          displayName: sectionName,
+          sectionName,
           isSubscription: false,
           outbounds: [
             {
@@ -1336,33 +1343,29 @@ async function getDashboardSections() {
               displayName: _("Fastest"),
               latency: outbound?.value?.history?.[0]?.delay || 0,
               type: outbound?.value?.type || "",
-              selected: selector?.value?.now === outbound?.code
+              selected: matchesProxyCode(selector?.value?.now || "", outbound?.code || "")
             },
             ...outbounds
           ]
         };
       }
       if (section.proxy_config_type === "subscription") {
-        const selector = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-out`
-        );
-        const fallbackUrltest = proxies.find(
-          (proxy) => proxy.code === `${section[".name"]}-urltest-out`
-        );
+        const selector = findProxy(proxies, sectionName + "-out");
+        const fallbackUrltest = findProxy(proxies, sectionName + "-urltest-out");
         const selectorOutbounds = (selector?.value?.all ?? []).flatMap(
           (code) => {
-            const item = proxies.find((proxy) => proxy.code === code);
+            const item = findProxy(proxies, code);
             if (!item) {
               return [];
             }
-            const isLegacyFastest = item.code === `${section[".name"]}-urltest-out`;
+            const isLegacyFastest = matchesProxyCode(item.code, sectionName + "-urltest-out") || item.value?.name?.toLowerCase() === "urltest" || item.value?.type?.toLowerCase() === "urltest";
             return [
               {
                 code: item.code,
-                displayName: isLegacyFastest ? _("Fastest") : item?.value?.name || "",
+                displayName: isLegacyFastest ? _("Fastest") : item?.value?.name || decodeURIComponent(item.code),
                 latency: item?.value?.history?.[0]?.delay || 0,
                 type: item?.value?.type || "",
-                selected: selector?.value?.now === item.code
+                selected: matchesProxyCode(selector?.value?.now || "", item.code)
               }
             ];
           }
@@ -1376,56 +1379,67 @@ async function getDashboardSections() {
           )
         ];
         if (outbounds.length === 0 && fallbackUrltest) {
-          const fallbackOutbounds = (fallbackUrltest?.value?.all ?? []).map((code) => proxies.find((item) => item.code === code)).map((item) => ({
-            code: item?.code || "",
-            displayName: item?.value?.name || "",
-            latency: item?.value?.history?.[0]?.delay || 0,
-            type: item?.value?.type || "",
-            selected: selector?.value?.now === item?.code
+          const fallbackOutbounds = (fallbackUrltest?.value?.all ?? []).map((code) => findProxy(proxies, code)).filter(Boolean).map((item) => ({
+            code: item.code,
+            displayName: item.value?.name || decodeURIComponent(item.code),
+            latency: item.value?.history?.[0]?.delay || 0,
+            type: item.value?.type || "",
+            selected: matchesProxyCode(selector?.value?.now || "", item.code)
           }));
-          return {
-            withTagSelect: true,
-            code: selector?.code || section[".name"],
-            displayName: section[".name"],
-            sectionName: section[".name"],
-            isSubscription: true,
-            subscriptionMetadata: allMeta[section[".name"]],
-            outbounds: [
-              {
-                code: fallbackUrltest?.code || "",
-                displayName: _("Fastest"),
-                latency: fallbackUrltest?.value?.history?.[0]?.delay || 0,
-                type: fallbackUrltest?.value?.type || "",
-                selected: selector?.value?.now === fallbackUrltest?.code
-              },
-              ...fallbackOutbounds
-            ]
-          };
+          outbounds.push(
+            {
+              code: fallbackUrltest.code,
+              displayName: _("Fastest"),
+              latency: fallbackUrltest.value?.history?.[0]?.delay || 0,
+              type: fallbackUrltest.value?.type || "",
+              selected: matchesProxyCode(selector?.value?.now || "", fallbackUrltest.code)
+            },
+            ...fallbackOutbounds
+          );
+        }
+        if (outbounds.length === 0) {
+          const systemProxies = /* @__PURE__ */ new Set([
+            "DIRECT",
+            "GLOBAL",
+            "REJECT",
+            "dns-out",
+            "direct-out",
+            "block-out",
+            sectionName + "-out"
+          ]);
+          const discovered = proxies.filter(
+            (p) => !systemProxies.has(p.code) && !p.code.endsWith("-urltest-out")
+          ).map((p) => ({
+            code: p.code,
+            displayName: p.value?.name || decodeURIComponent(p.code),
+            latency: p.value?.history?.[0]?.delay || 0,
+            type: p.value?.type || "",
+            selected: matchesProxyCode(selector?.value?.now || "", p.code)
+          }));
+          outbounds.push(...discovered);
         }
         return {
           withTagSelect: true,
-          code: selector?.code || section[".name"],
-          displayName: section[".name"],
-          sectionName: section[".name"],
+          code: selector?.code || sectionName + "-out",
+          displayName: sectionName,
+          sectionName,
           isSubscription: true,
-          subscriptionMetadata: allMeta[section[".name"]],
+          subscriptionMetadata: allMeta[sectionName],
           outbounds
         };
       }
     }
     if (section.connection_type === "vpn") {
-      const outbound = proxies.find(
-        (proxy) => proxy.code === `${section[".name"]}-out`
-      );
+      const outbound = findProxy(proxies, sectionName + "-out");
       return {
         withTagSelect: false,
-        code: outbound?.code || section[".name"],
-        displayName: section[".name"],
-        sectionName: section[".name"],
+        code: outbound?.code || sectionName,
+        displayName: sectionName,
+        sectionName,
         isSubscription: false,
         outbounds: [
           {
-            code: outbound?.code || section[".name"],
+            code: outbound?.code || sectionName,
             displayName: section.interface || outbound?.value?.name || "",
             latency: outbound?.value?.history?.[0]?.delay || 0,
             type: outbound?.value?.type || "",
@@ -1436,9 +1450,9 @@ async function getDashboardSections() {
     }
     return {
       withTagSelect: false,
-      code: section[".name"],
-      displayName: section[".name"],
-      sectionName: section[".name"],
+      code: sectionName,
+      displayName: sectionName,
+      sectionName,
       isSubscription: false,
       outbounds: []
     };
@@ -2412,19 +2426,22 @@ var styles2 = `
 `;
 
 // src/icons/renderLoaderCircleIcon24.ts
-function renderLoaderCircleIcon24() {
+function renderLoaderCircleIcon24(size = 16) {
   const NS = "http://www.w3.org/2000/svg";
   return svgEl(
     "svg",
     {
       xmlns: NS,
+      width: String(size),
+      height: String(size),
       viewBox: "0 0 24 24",
       fill: "none",
       stroke: "currentColor",
       "stroke-width": "2",
       "stroke-linecap": "round",
       "stroke-linejoin": "round",
-      class: "lucide lucide-loader-circle rotate"
+      class: "lucide lucide-loader-circle rotate",
+      style: `width: ${size}px; height: ${size}px; min-width: ${size}px; min-height: ${size}px; vertical-align: middle; display: inline-block;`
     },
     [
       svgEl("path", {
@@ -3995,6 +4012,25 @@ var styles3 = `
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.pdk_dashboard-page__outbound-section__actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.pdk_dashboard-page__outbound-section__actions .btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    flex-shrink: 0;
 }
 
 .pdk_dashboard-page__outbound-section__action-btn {
@@ -6185,12 +6221,55 @@ function getClashUIUrl() {
   return `http://${hostname}:9090/ui`;
 }
 
+// src/helpers/getDeviceHostnames.ts
+async function getDeviceHostnames() {
+  const ipMap = {};
+  try {
+    const leases = await fs.read("/tmp/dhcp.leases").catch(() => "") || await fs.read("/var/dhcp.leases").catch(() => "");
+    if (leases) {
+      const lines = leases.split("\n");
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 4) {
+          const ip = parts[2];
+          const hostname = parts[3];
+          if (ip && hostname && hostname !== "*" && hostname !== "?") {
+            ipMap[ip] = hostname;
+          }
+        }
+      }
+    }
+  } catch (_2) {
+  }
+  try {
+    const hosts = await fs.read("/etc/hosts").catch(() => "");
+    if (hosts) {
+      const lines = hosts.split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const parts = trimmed.split(/\s+/);
+        if (parts.length >= 2) {
+          const ip = parts[0];
+          const hostname = parts[1];
+          if (ip && hostname && !ipMap[ip] && ip !== "127.0.0.1" && ip !== "::1") {
+            ipMap[ip] = hostname;
+          }
+        }
+      }
+    }
+  } catch (_2) {
+  }
+  return ipMap;
+}
+
 // src/netshift/tabs/connections/connections.store.ts
 var initialConnectionsStore = {
   connections: [],
   downloadTotal: 0,
   uploadTotal: 0,
   memory: 0,
+  hostnames: {},
   searchQuery: "",
   filterNetwork: "all",
   isPaused: false,
@@ -6216,7 +6295,7 @@ function renderConnections({
   onCloseConnection,
   onCloseAllConnections
 }) {
-  const { connections, downloadTotal, uploadTotal, memory, searchQuery, filterNetwork, isPaused, closingIds, closingAll, loading } = state2;
+  const { connections, downloadTotal, uploadTotal, memory, hostnames, searchQuery, filterNetwork, isPaused, closingIds, closingAll, loading } = state2;
   const q = searchQuery.toLowerCase().trim();
   const filtered = connections.filter((conn) => {
     if (filterNetwork !== "all" && conn.metadata.network?.toLowerCase() !== filterNetwork) {
@@ -6227,7 +6306,8 @@ function renderConnections({
     const src = (conn.metadata.sourceIP || "").toLowerCase();
     const rule = (conn.rule || "").toLowerCase();
     const chain = (conn.chains?.join(" ") || "").toLowerCase();
-    return host.includes(q) || src.includes(q) || rule.includes(q) || chain.includes(q);
+    const device = (hostnames[conn.metadata.sourceIP] || "").toLowerCase();
+    return host.includes(q) || src.includes(q) || rule.includes(q) || chain.includes(q) || device.includes(q);
   });
   return E("div", { class: "pdk_connections-page" }, [
     // Top Stats Grid
@@ -6255,7 +6335,7 @@ function renderConnections({
         E("input", {
           type: "text",
           class: "pdk_connections-search-input",
-          placeholder: _("Search by host, IP, rule..."),
+          placeholder: _("Search by host, IP, device, rule..."),
           value: searchQuery,
           oninput: (e) => onSearchChange(e.target.value)
         }),
@@ -6301,7 +6381,7 @@ function renderConnections({
         E("thead", {}, [
           E("tr", {}, [
             E("th", {}, _("Host / Destination")),
-            E("th", {}, _("Client IP")),
+            E("th", {}, _("Device / Client IP")),
             E("th", {}, _("Network")),
             E("th", {}, _("Route / Outbound")),
             E("th", {}, _("Upload")),
@@ -6318,9 +6398,14 @@ function renderConnections({
             const hostDisplay = conn.metadata.host ? `${conn.metadata.host}:${conn.metadata.destinationPort}` : `${conn.metadata.destinationIP}:${conn.metadata.destinationPort}`;
             const netBadgeClass = conn.metadata.network?.toLowerCase() === "udp" ? "pdk_badge-udp" : "pdk_badge-tcp";
             const chainDisplay = conn.chains && conn.chains.length > 0 ? conn.chains[conn.chains.length - 1] : conn.rule || "DIRECT";
+            const deviceName = hostnames[conn.metadata.sourceIP];
+            const clientContent = deviceName ? E("div", { style: "display: flex; flex-direction: column; gap: 2px;" }, [
+              E("span", { style: "font-weight: 600; color: var(--text-color-high, #fff); font-size: 13px;" }, deviceName),
+              E("span", { style: "color: var(--text-muted, #888); font-size: 11px;" }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`)
+            ]) : E("span", { style: "color: var(--text-muted, #aaa); white-space: nowrap;" }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`);
             return E("tr", {}, [
               E("td", { style: "max-width: 220px; word-break: break-all; font-weight: 500;" }, hostDisplay),
-              E("td", { style: "color: var(--text-muted, #aaa); white-space: nowrap;" }, `${conn.metadata.sourceIP}:${conn.metadata.sourcePort}`),
+              E("td", {}, [clientContent]),
               E("td", {}, [
                 E("span", { class: `pdk_badge ${netBadgeClass}` }, conn.metadata.network?.toUpperCase() || "TCP")
               ]),
@@ -6349,6 +6434,7 @@ function renderConnections({
 // src/netshift/tabs/connections/initController.ts
 var state = { ...initialConnectionsStore };
 var pollInterval = null;
+var hostnamesInterval = null;
 function render4() {
   const container = document.getElementById("connections-root-container");
   if (!container) return;
@@ -6399,6 +6485,17 @@ function render4() {
 }
 function initController4() {
   state = { ...initialConnectionsStore, closingIds: /* @__PURE__ */ new Set() };
+  const updateHostnames = async () => {
+    try {
+      const names = await getDeviceHostnames();
+      state.hostnames = { ...state.hostnames, ...names };
+      render4();
+    } catch (_2) {
+    }
+  };
+  updateHostnames();
+  if (hostnamesInterval) clearInterval(hostnamesInterval);
+  hostnamesInterval = window.setInterval(updateHostnames, 15e3);
   async function connectWs() {
     try {
       const secret = await getClashApiSecret();
@@ -6978,6 +7075,7 @@ return baseclass.extend({
   executeShellCommand,
   getClashUIUrl,
   getClashWsUrl,
+  getDeviceHostnames,
   getProxyUrlName,
   injectGlobalStyles,
   insertIf,

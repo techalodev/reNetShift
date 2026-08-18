@@ -3,12 +3,14 @@ import { getClashWsUrl } from '../../../helpers/getClashApiUrl';
 import { getClashApiSecret } from '../../methods/custom/getClashApiSecret';
 import { NetShiftShellMethods } from '../../methods/shell';
 import { showToast } from '../../../helpers/showToast';
+import { getDeviceHostnames } from '../../../helpers/getDeviceHostnames';
 import { NetShift } from '../../types';
 import { initialConnectionsStore, ConnectionsStoreState } from './connections.store';
 import { renderConnections } from './renderConnections';
 
 let state: ConnectionsStoreState = { ...initialConnectionsStore };
 let pollInterval: number | null = null;
+let hostnamesInterval: number | null = null;
 
 function render() {
   const container = document.getElementById('connections-root-container');
@@ -63,6 +65,18 @@ function render() {
 
 export function initController() {
   state = { ...initialConnectionsStore, closingIds: new Set<string>() };
+
+  const updateHostnames = async () => {
+    try {
+      const names = await getDeviceHostnames();
+      state.hostnames = { ...state.hostnames, ...names };
+      render();
+    } catch (_) {}
+  };
+
+  updateHostnames();
+  if (hostnamesInterval) clearInterval(hostnamesInterval);
+  hostnamesInterval = window.setInterval(updateHostnames, 15000);
 
   async function connectWs() {
     try {

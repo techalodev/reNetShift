@@ -5,6 +5,7 @@ export interface ConnectionsStoreState {
   downloadTotal: number;
   uploadTotal: number;
   memory: number;
+  hostnames: Record<string, string>;
   searchQuery: string;
   filterNetwork: string; // 'all' | 'tcp' | 'udp'
   isPaused: boolean;
@@ -18,6 +19,7 @@ export const initialConnectionsStore: ConnectionsStoreState = {
   downloadTotal: 0,
   uploadTotal: 0,
   memory: 0,
+  hostnames: {},
   searchQuery: '',
   filterNetwork: 'all',
   isPaused: false,
