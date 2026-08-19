@@ -68,7 +68,6 @@ sing_box_cf_add_proxy_outbound() {
     # vmess) case below.
     local raw_url="$3"
 
-    url=$(url_decode "$url")
     url=$(url_strip_fragment "$url")
 
     local scheme
@@ -84,8 +83,8 @@ sing_box_cf_add_proxy_outbound() {
         if [ "$scheme" = "socks5" ]; then
             userinfo=$(url_get_userinfo "$url")
             if [ -n "$userinfo" ]; then
-                username="${userinfo%%:*}"
-                password="${userinfo#*:}"
+                username="$(url_decode "${userinfo%%:*}")"
+                password="$(url_decode "${userinfo#*:}")"
             fi
         fi
         config="$(sing_box_cm_add_socks_outbound \
@@ -105,7 +104,7 @@ sing_box_cf_add_proxy_outbound() {
         tag=$(get_outbound_tag_by_section "$section")
         host=$(url_get_host "$url")
         port=$(url_get_port "$url")
-        uuid=$(url_get_userinfo "$url")
+        uuid="$(url_decode "$(url_get_userinfo "$url")")"
         flow=$(url_get_query_param "$url" "flow")
         packet_encoding=$(url_get_query_param "$url" "packetEncoding")
 
@@ -148,7 +147,7 @@ sing_box_cf_add_proxy_outbound() {
         tag=$(get_outbound_tag_by_section "$section")
         host=$(url_get_host "$url")
         port=$(url_get_port "$url")
-        password=$(url_get_userinfo "$url")
+        password="$(url_decode "$(url_get_userinfo "$url")")"
 
         config=$(sing_box_cm_add_trojan_outbound "$config" "$tag" "$host" "$port" "$password")
         config=$(_add_outbound_security "$config" "$tag" "$url")

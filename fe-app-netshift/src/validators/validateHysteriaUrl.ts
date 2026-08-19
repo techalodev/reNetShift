@@ -5,11 +5,12 @@ export function validateHysteria2Url(url: string): ValidationResult {
   try {
     const isHY2 = url.startsWith('hysteria2://');
     const isHY2Short = url.startsWith('hy2://');
+    const isHY1 = url.startsWith('hysteria://');
 
-    if (!isHY2 && !isHY2Short)
+    if (!isHY2 && !isHY2Short && !isHY1)
       return {
         valid: false,
-        message: _('Invalid HY2 URL: must start with hysteria2:// or hy2://'),
+        message: _('Invalid HY2 URL: must start with hysteria2://, hy2:// or hysteria://'),
       };
 
     if (/\s/.test(url))
@@ -18,7 +19,7 @@ export function validateHysteria2Url(url: string): ValidationResult {
         message: _('Invalid HY2 URL: must not contain spaces'),
       };
 
-    const prefix = isHY2 ? 'hysteria2://' : 'hy2://';
+    const prefix = isHY2 ? 'hysteria2://' : isHY2Short ? 'hy2://' : 'hysteria://';
     const body = url.slice(prefix.length);
 
     const [mainPart] = body.split('#');

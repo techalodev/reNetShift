@@ -3390,6 +3390,79 @@ else
 fi
 rm -f "$caseQ_nul" "$caseQ_txt"
 
+# ── CASE R: Comprehensive Hysteria2 schemes & features (Forkop/Podkop parity) ──
+caseR_in="/tmp/netshift-fb-caseR-$$.txt"
+caseR_out="/tmp/netshift-fb-caseR-out-$$.json"
+cat > "$caseR_in" << 'HY2LINKS'
+hysteria2://pa%3Ass@hy2-example.com:443?allowInsecure=1&sni=hy2-example.com&obfs=salamander&obfs-password=obfpass#Hy2-AllowInsecure
+hy2://user%40example.com:secret@hy2-short.com:8443?insecure=1&alpn=h3#Hy2-Short
+hysteria://plainpass@hy2-plain.com:443#Hy2-Plain
+hy2://mportpass@hy2-mport.com:443?mport=10000-20000&sni=hy2-mport.com#Hy2-MPort
+HY2LINKS
+
+if normalize_subscription_to_singbox "$caseR_in" "$caseR_out" "hy2test"; then
+    echo 'fb-caseR-hy2-rc:OK'
+else
+    echo 'fb-caseR-hy2-rc:FAIL'
+fi
+
+if validate_subscription_file "$caseR_out"; then
+    echo 'fb-caseR-hy2-validate:OK'
+else
+    echo 'fb-caseR-hy2-validate:FAIL'
+fi
+
+# Check individual outbound fields
+if jq -e '[.outbounds[] | select(.type == "hysteria2" and .password == "pa:ss" and .tls.insecure == true and .tls.server_name == "hy2-example.com" and .obfs.type == "salamander" and .obfs.password == "obfpass")] | length == 1' "$caseR_out" > /dev/null 2>&1; then
+    echo 'fb-caseR-hy2-allowinsecure-obfs:OK'
+else
+    echo 'fb-caseR-hy2-allowinsecure-obfs:FAIL'
+fi
+
+if jq -e '[.outbounds[] | select(.type == "hysteria2" and .password == "secret" and .tls.insecure == true and .tls.alpn == ["h3"])] | length == 1' "$caseR_out" > /dev/null 2>&1; then
+    echo 'fb-caseR-hy2-short-alpn:OK'
+else
+    echo 'fb-caseR-hy2-short-alpn:FAIL'
+fi
+
+if jq -e '[.outbounds[] | select(.type == "hysteria2" and .password == "plainpass" and .server == "hy2-plain.com" and .tls.enabled == true and .tls.server_name == "hy2-plain.com")] | length == 1' "$caseR_out" > /dev/null 2>&1; then
+    echo 'fb-caseR-hy2-plain-scheme:OK'
+else
+    echo 'fb-caseR-hy2-plain-scheme:FAIL'
+fi
+
+if jq -e '[.outbounds[] | select(.type == "hysteria2" and .server_ports == ["10000:20000"])] | length == 1' "$caseR_out" > /dev/null 2>&1; then
+    echo 'fb-caseR-hy2-mport-range:OK'
+else
+    echo 'fb-caseR-hy2-mport-range:FAIL'
+fi
+
+# Assert no invalid utls was set on any Hysteria2 outbound
+if jq -e '[.outbounds[] | select(.type == "hysteria2" and .tls.utls != null)] | length == 0' "$caseR_out" > /dev/null 2>&1; then
+    echo 'fb-caseR-hy2-no-utls:OK'
+else
+    echo 'fb-caseR-hy2-no-utls:FAIL'
+fi
+
+# Whole-chain sing-box check
+if command -v sing-box > /dev/null 2>&1; then
+    caseR_full="/tmp/netshift-fb-caseR-full-$$.json"
+    jq '{log: {level: "error"},
+         inbounds: [],
+         outbounds: (.outbounds + [{type: "direct", tag: "direct-out"}]),
+         route: {}}' "$caseR_out" > "$caseR_full" 2>/dev/null
+    if sing-box -c "$caseR_full" check > /dev/null 2>&1; then
+        echo 'fb-caseR-hy2-singbox-check:OK'
+    else
+        echo 'fb-caseR-hy2-singbox-check:FAIL'
+    fi
+    rm -f "$caseR_full"
+else
+    echo 'fb-caseR-hy2-singbox-check:SKIP'
+fi
+
+rm -f "$caseR_in" "$caseR_out"
+
 echo 'DONE'
 FBEOF
 

@@ -32,7 +32,8 @@ export function validateProxyUrl(url: string): ValidationResult {
 
   if (
     trimmedUrl.startsWith('hysteria2://') ||
-    trimmedUrl.startsWith('hy2://')
+    trimmedUrl.startsWith('hy2://') ||
+    trimmedUrl.startsWith('hysteria://')
   ) {
     return validateHysteria2Url(trimmedUrl);
   }
@@ -40,7 +41,7 @@ export function validateProxyUrl(url: string): ValidationResult {
   return {
     valid: false,
     message: _(
-      'URL must start with vless://, vmess://, ss://, trojan://, socks4/5://, or hysteria2://hy2://',
+      'URL must start with vless://, vmess://, ss://, trojan://, socks4/5://, or hysteria2://hy2://hysteria://',
     ),
   };
 }

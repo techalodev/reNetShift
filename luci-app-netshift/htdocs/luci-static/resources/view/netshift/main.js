@@ -574,17 +574,18 @@ function validateHysteria2Url(url) {
   try {
     const isHY2 = url.startsWith("hysteria2://");
     const isHY2Short = url.startsWith("hy2://");
-    if (!isHY2 && !isHY2Short)
+    const isHY1 = url.startsWith("hysteria://");
+    if (!isHY2 && !isHY2Short && !isHY1)
       return {
         valid: false,
-        message: _("Invalid HY2 URL: must start with hysteria2:// or hy2://")
+        message: _("Invalid HY2 URL: must start with hysteria2://, hy2:// or hysteria://")
       };
     if (/\s/.test(url))
       return {
         valid: false,
         message: _("Invalid HY2 URL: must not contain spaces")
       };
-    const prefix = isHY2 ? "hysteria2://" : "hy2://";
+    const prefix = isHY2 ? "hysteria2://" : isHY2Short ? "hy2://" : "hysteria://";
     const body = url.slice(prefix.length);
     const [mainPart] = body.split("#");
     const [authHostPort, queryString] = mainPart.split("?");
@@ -750,13 +751,13 @@ function validateProxyUrl(url) {
   if (/^socks(4|4a|5):\/\//.test(trimmedUrl)) {
     return validateSocksUrl(trimmedUrl);
   }
-  if (trimmedUrl.startsWith("hysteria2://") || trimmedUrl.startsWith("hy2://")) {
+  if (trimmedUrl.startsWith("hysteria2://") || trimmedUrl.startsWith("hy2://") || trimmedUrl.startsWith("hysteria://")) {
     return validateHysteria2Url(trimmedUrl);
   }
   return {
     valid: false,
     message: _(
-      "URL must start with vless://, vmess://, ss://, trojan://, socks4/5://, or hysteria2://hy2://"
+      "URL must start with vless://, vmess://, ss://, trojan://, socks4/5://, or hysteria2://hy2://hysteria://"
     )
   };
 }

@@ -136,16 +136,25 @@ url_get_scheme() {
 # Extracts the userinfo (username[:password]) part from a URL
 url_get_userinfo() {
     local url="$1"
-    echo "$url" | sed -n -e 's#^[^:/?]*://##' -e '/@/!d' -e 's/@.*//p'
+    url="${url%%[\#\?]*}"
+    case "$url" in
+    *"://"*@*)
+        url="${url#*://}"
+        echo "${url%@*}"
+        ;;
+    *)
+        echo ""
+        ;;
+    esac
 }
 
 # Extracts the host part from a URL
 url_get_host() {
     local url="$1"
-
+    url="${url%%[\#\?]*}"
     url="${url#*://}"
-    url="${url#*@}"
-    url="${url%%[/?#]*}"
+    url="${url##*@}"
+    url="${url%%/*}"
 
     case "$url" in
     \[*\]) echo "${url#\[}" | sed 's/\]$//' ;;
@@ -157,10 +166,10 @@ url_get_host() {
 # Extracts the port number from a URL
 url_get_port() {
     local url="$1"
-
+    url="${url%%[\#\?]*}"
     url="${url#*://}"
-    url="${url#*@}"
-    url="${url%%[/?#]*}"
+    url="${url##*@}"
+    url="${url%%/*}"
 
     case "$url" in
     \[*\]:*) echo "${url##*]:}" ;;
