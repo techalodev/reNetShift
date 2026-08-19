@@ -67,6 +67,7 @@ export namespace NetShift {
     GET_SYSTEM_INFO = 'get_system_info',
     SUBSCRIPTION_UPDATE = 'subscription_update',
     GET_SUBSCRIPTION_METADATA = 'get_subscription_metadata',
+    CHECK_AWG = 'check_awg',
   }
 
   export enum AvailableClashAPIMethods {
@@ -178,6 +179,26 @@ export namespace NetShift {
     subscription_filter_exclude_keywords?: string[];
   }
 
+  export interface ConfigProxyWireguardSection {
+    connection_type: 'proxy';
+    proxy_config_type: 'wireguard';
+    awg_peer_endpoint: string;
+    awg_private_key: string;
+    awg_peer_public_key: string;
+    awg_local_address: string;
+    awg_pre_shared_key?: string;
+    awg_reserved?: string;
+    awg_junk_packet_count?: string;
+    awg_junk_packet_min_size?: string;
+    awg_junk_packet_max_size?: string;
+    awg_init_packet_junk_size?: string;
+    awg_response_packet_junk_size?: string;
+    awg_init_packet_magic_header?: string;
+    awg_response_packet_magic_header?: string;
+    awg_underload_packet_magic_header?: string;
+    awg_transport_packet_magic_header?: string;
+  }
+
   export interface ConfigVpnSection {
     connection_type: 'vpn';
     interface: string;
@@ -197,6 +218,7 @@ export namespace NetShift {
     | ConfigProxyUrlSection
     | ConfigProxyOutboundSection
     | ConfigProxySubscriptionSection
+    | ConfigProxyWireguardSection
     | ConfigVpnSection
     | ConfigBlockSection
     | ConfigExclusionSection;

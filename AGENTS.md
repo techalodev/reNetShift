@@ -8,7 +8,7 @@ roles, and workflow. Read it fully before doing anything in this repository.
 
 NetShift is a traffic-routing / VPN client for **OpenWRT 24.10+** routers, built
 on top of **sing-box**. It routes selected domains/subnets through a tunnel
-(VLESS, Shadowsocks, Trojan, Hysteria2, SOCKS, subscription URLs) while sending
+(AmneziaWG, WireGuard, VLESS, Shadowsocks, Trojan, Hysteria2, SOCKS, subscription URLs) while sending
 everything else directly, and ships a LuCI web UI. It is a fork of
 `itdoginfo/podkop`, rebranded to NetShift at 0.8.0. It is **beta**.
 License: GPL-2.0-or-later, with a separate restrictive trademark policy on the
