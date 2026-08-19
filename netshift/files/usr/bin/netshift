@@ -2554,6 +2554,56 @@ configure_outbound_handler() {
                 config="$(sing_box_cm_add_selector_outbound "$config" "$selector_tag" "$selector_outbounds" "$urltest_tag" "true")"
             fi
             ;;
+        wireguard)
+            log "Detected proxy configuration type: wireguard" "debug"
+            if ! is_sing_box_extended; then
+                echolog "WireGuard (Amnezia) is only supported in the sing-box-extended build. This section will be skipped." "error"
+                mark_section_outbound_unavailable "$section"
+                return 0
+            fi
+
+            local awg_peer_endpoint awg_private_key awg_peer_public_key awg_local_address \
+                  awg_pre_shared_key awg_reserved awg_jc awg_jmin awg_jmax awg_s1 awg_s2 \
+                  awg_h1 awg_h2 awg_h3 awg_h4 awg_server awg_server_port selector_tag
+            
+            config_get awg_peer_endpoint "$section" "awg_peer_endpoint"
+            config_get awg_private_key "$section" "awg_private_key"
+            config_get awg_peer_public_key "$section" "awg_peer_public_key"
+            config_get awg_local_address "$section" "awg_local_address"
+            config_get awg_pre_shared_key "$section" "awg_pre_shared_key" ""
+            config_get awg_reserved "$section" "awg_reserved" ""
+            config_get awg_jc "$section" "awg_junk_packet_count" "0"
+            config_get awg_jmin "$section" "awg_junk_packet_min_size" "0"
+            config_get awg_jmax "$section" "awg_junk_packet_max_size" "0"
+            config_get awg_s1 "$section" "awg_init_packet_junk_size" "0"
+            config_get awg_s2 "$section" "awg_response_packet_junk_size" "0"
+            config_get awg_h1 "$section" "awg_init_packet_magic_header" "0"
+            config_get awg_h2 "$section" "awg_response_packet_magic_header" "0"
+            config_get awg_h3 "$section" "awg_underload_packet_magic_header" "0"
+            config_get awg_h4 "$section" "awg_transport_packet_magic_header" "0"
+
+            if [ -z "$awg_peer_endpoint" ] || [ -z "$awg_private_key" ] || [ -z "$awg_peer_public_key" ] || [ -z "$awg_local_address" ]; then
+                log "Wireguard missing required fields. Aborted." "fatal"
+                exit 1
+            fi
+
+            if echo "$awg_peer_endpoint" | grep -q ":"; then
+                awg_server="${awg_peer_endpoint%:*}"
+                awg_server_port="${awg_peer_endpoint##*:}"
+            else
+                awg_server="$awg_peer_endpoint"
+                awg_server_port=51820
+            fi
+
+            # Handle IPv6 [address]:port
+            if echo "$awg_server" | grep -q "^\["; then
+                awg_server="${awg_server#\[}"
+                awg_server="${awg_server%\]}"
+            fi
+            
+            selector_tag="$(get_outbound_tag_by_section "$section")"
+            config="$(sing_box_cm_add_wireguard_endpoint "$config" "$selector_tag" "$awg_server" "$awg_server_port" "$awg_local_address" "$awg_private_key" "$awg_peer_public_key" "$awg_pre_shared_key" "$awg_reserved" "$awg_jc" "$awg_jmin" "$awg_jmax" "$awg_s1" "$awg_s2" "$awg_h1" "$awg_h2" "$awg_h3" "$awg_h4")"
+            ;;
         subscription)
             log "Detected proxy configuration type: subscription" "debug"
             local subscription_urls_tmp subscription_url subscription_url_count urltest_tag selector_tag \

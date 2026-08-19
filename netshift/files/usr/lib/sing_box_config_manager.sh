@@ -1082,6 +1082,85 @@ sing_box_cm_add_interface_outbound() {
 }
 
 #######################################
+# Add a Wireguard endpoint (AmneziaWG compatible) to a sing-box JSON configuration.
+# Arguments:
+#   config: string (JSON)
+#   tag: string, identifier
+#   server: string, endpoint host
+#   server_port: number, endpoint port
+#   local_address: string, e.g. "10.0.0.1/32"
+#   private_key: string
+#   peer_public_key: string
+#   pre_shared_key: string (optional)
+#   reserved: string (optional comma-separated ints, e.g. "0,0,0")
+#   jc, jmin, jmax, s1, s2, h1, h2, h3, h4: strings/numbers (optional)
+#######################################
+sing_box_cm_add_wireguard_endpoint() {
+    local config="$1"
+    local tag="$2"
+    local server="$3"
+    local server_port="$4"
+    local local_address="$5"
+    local private_key="$6"
+    local peer_public_key="$7"
+    local pre_shared_key="$8"
+    local reserved="$9"
+    local jc="${10}"
+    local jmin="${11}"
+    local jmax="${12}"
+    local s1="${13}"
+    local s2="${14}"
+    local h1="${15}"
+    local h2="${16}"
+    local h3="${17}"
+    local h4="${18}"
+
+    echo "$config" | jq \
+        --arg tag "$tag" \
+        --arg server "$server" \
+        --argjson server_port "${server_port:-0}" \
+        --arg local_address "$local_address" \
+        --arg private_key "$private_key" \
+        --arg peer_public_key "$peer_public_key" \
+        --arg pre_shared_key "$pre_shared_key" \
+        --arg reserved "$reserved" \
+        --argjson jc "${jc:-0}" \
+        --argjson jmin "${jmin:-0}" \
+        --argjson jmax "${jmax:-0}" \
+        --argjson s1 "${s1:-0}" \
+        --argjson s2 "${s2:-0}" \
+        --argjson h1 "${h1:-0}" \
+        --argjson h2 "${h2:-0}" \
+        --argjson h3 "${h3:-0}" \
+        --argjson h4 "${h4:-0}" \
+        '.endpoints += [{
+            type: "wireguard",
+            tag: $tag,
+            system_interface: false,
+            address: (if $local_address != "" then [$local_address] else [] end),
+            private_key: $private_key,
+            peers: [{
+                server: $server,
+                server_port: $server_port,
+                public_key: $peer_public_key
+            } + (if $pre_shared_key != "" then { pre_shared_key: $pre_shared_key } else {} end)
+              + (if $reserved != "" then { reserved: ([$reserved | split(",")[] | tonumber]) } else {} end)]
+        } + (if $jc > 0 then {
+            amnezia: {
+                jc: $jc,
+                jmin: $jmin,
+                jmax: $jmax,
+                s1: $s1,
+                s2: $s2,
+                h1: $h1,
+                h2: $h2,
+                h3: $h3,
+                h4: $h4
+            }
+        } else {} end)]'
+}
+
+#######################################
 # Add a raw outbound JSON object to the outbounds section of a sing-box configuration.
 # Arguments:
 #   config: string (JSON), sing-box configuration to modify

@@ -59,6 +59,7 @@ function createSectionContent(section) {
   o.value("urltest_text", _("URLTest (text list)"));
   o.value("subscription", _("Subscription"));
   o.value("outbound", _("Outbound Config"));
+  o.value("wireguard", _("WireGuard / AmneziaWG"));
   o.default = "url";
   o.depends("connection_type", "proxy");
 
@@ -117,6 +118,233 @@ function createSectionContent(section) {
 
     return validation.message;
   };
+
+  // ── WireGuard / AmneziaWG fields ──────────────────────────────────────────
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_peer_endpoint",
+    _("Peer Endpoint"),
+    _("WireGuard/AmneziaWG peer address in host:port format"),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "vpn.example.com:51820";
+  o.rmempty = false;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardEndpoint(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_private_key",
+    _("Private Key"),
+    _("Your WireGuard/AmneziaWG private key (base64)"),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.password = true;
+  o.rmempty = false;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardPrivateKey(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_peer_public_key",
+    _("Peer Public Key"),
+    _("The peer's WireGuard/AmneziaWG public key (base64)"),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.rmempty = false;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardPublicKey(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_local_address",
+    _("Local Address"),
+    _("Tunnel interface address in CIDR notation (e.g. 10.0.0.2/32)"),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "10.0.0.2/32";
+  o.rmempty = false;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardLocalAddress(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_pre_shared_key",
+    _("Pre-Shared Key"),
+    _("Optional pre-shared key for additional security (base64)"),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.password = true;
+  o.rmempty = true;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardPsk(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  o = section.taboption(
+    "connection",
+    form.Value,
+    "awg_reserved",
+    _("Reserved Bytes"),
+    _(
+      "Optional reserved field as JSON array of 3 integers, e.g. [0,0,0]. Used by some WireGuard providers.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "[0, 0, 0]";
+  o.rmempty = true;
+  o.validate = function (section_id, value) {
+    if (!value || value.length === 0) return true;
+    const validation = main.validateWireguardReserved(value);
+    if (validation.valid) return true;
+    return validation.message;
+  };
+
+  // ── AmneziaWG obfuscation fields (Advanced tab, extended only) ────────────
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_junk_packet_count",
+    _("Junk Packet Count"),
+    _(
+      "AmneziaWG: number of junk packets sent with each handshake. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "4";
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_junk_packet_min_size",
+    _("Junk Packet Min Size"),
+    _(
+      "AmneziaWG: minimum size of junk packets in bytes. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "40";
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_junk_packet_max_size",
+    _("Junk Packet Max Size"),
+    _(
+      "AmneziaWG: maximum size of junk packets in bytes. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "70";
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_init_packet_junk_size",
+    _("Init Packet Junk Size"),
+    _(
+      "AmneziaWG: junk size added to HandshakeInitiation packets. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "0";
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_response_packet_junk_size",
+    _("Response Packet Junk Size"),
+    _(
+      "AmneziaWG: junk size added to HandshakeResponse packets. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.placeholder = "0";
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_init_packet_magic_header",
+    _("Init Packet Magic Header"),
+    _(
+      "AmneziaWG: uint32 magic value replacing HandshakeInitiation type. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_response_packet_magic_header",
+    _("Response Packet Magic Header"),
+    _(
+      "AmneziaWG: uint32 magic value replacing HandshakeResponse type. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_underload_packet_magic_header",
+    _("Underload Packet Magic Header"),
+    _(
+      "AmneziaWG: uint32 magic value replacing UnderLoad type. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.rmempty = true;
+  o.datatype = "uinteger";
+
+  o = section.taboption(
+    "advanced",
+    form.Value,
+    "awg_transport_packet_magic_header",
+    _("Transport Packet Magic Header"),
+    _(
+      "AmneziaWG: uint32 magic value replacing Transport type. Requires sing-box-extended.",
+    ),
+  );
+  o.depends({ connection_type: "proxy", proxy_config_type: "wireguard" });
+  o.rmempty = true;
+  o.datatype = "uinteger";
 
   o = section.taboption(
     "subscription",
